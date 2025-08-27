@@ -589,8 +589,8 @@ document.addEventListener('DOMContentLoaded', function() {
     'use strict';
 
     // --- CONFIGURAÇÃO SUPABASE ---
-    const SUPABASE_URL = '';
-    const SUPABASE_ANON_KEY = '';
+    const SUPABASE_URL = 'https://htykpybzbgbrtvuoegau.supabase.co';
+    const SUPABASE_ANON_KEY = 'eyJhbGciOiJIUzI1NiIsInR5cCI6IkpXVCJ9.eyJpc3MiOiJzdXBhYmFzZSIsInJlZiI6Imh0eWtweWJ6YmdicnR2dW9lZ2F1Iiwicm9sZSI6ImFub24iLCJpYXQiOjE3NTYzMjgwODAsImV4cCI6MjA3MTkwNDA4MH0.HSjP0GNCSOjReugsjL4Xh-nzrbksvB5h4C75F-47608';
     const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
 
     // --- DADOS LOCAIS (Para sugestões) ---
