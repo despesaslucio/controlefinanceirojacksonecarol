@@ -1,0 +1,1111 @@
+<!DOCTYPE html>
+<html lang="pt-BR">
+<head>
+    <meta charset="UTF-8">
+    <meta name="viewport" content="width=device-width, initial-scale=1.0">
+    <title>Dashboard Financeiro com Supabase</title>
+    <link rel="preconnect" href="https://fonts.googleapis.com">
+    <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
+    <link href="https://fonts.googleapis.com/css2?family=Poppins:wght@400;500;600;700&display=swap" rel="stylesheet">
+    <link rel="stylesheet" href="https://cdnjs.cloudflare.com/ajax/libs/font-awesome/6.5.2/css/all.min.css">
+    <script src="https://cdn.jsdelivr.net/npm/chart.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/chartjs-adapter-date-fns"></script>
+    <script src="https://cdn.jsdelivr.net/npm/date-fns"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf/2.5.1/jspdf.umd.min.js"></script>
+    <script src="https://cdnjs.cloudflare.com/ajax/libs/jspdf-autotable/3.5.23/jspdf.plugin.autotable.min.js"></script>
+    <script src="https://cdn.jsdelivr.net/npm/@supabase/supabase-js@2"></script>
+    <style>
+        /* --- ESTILOS GERAIS E VARIÁVEIS --- */
+        :root {
+            --cor-fundo: #f0f2f5;
+            --cor-texto: #363f5f;
+            --cor-texto-leve: #969cb3;
+            --cor-card: #ffffff;
+            --cor-borda: #e2e8f0;
+            --cor-verde: #10b981;
+            --cor-vermelho: #ef4444;
+            --cor-azul: #3b82f6;
+            --cor-amarelo-fundo: #fef9c3;
+            --cor-amarelo-texto: #a16207;
+            --sombra-card: 0 4px 6px -1px rgb(0 0 0 / 0.1), 0 2px 4px -2px rgb(0 0 0 / 0.1);
+            --transicao: all 0.3s ease-in-out;
+        }
+
+        body.dark-mode {
+            --cor-fundo: #1a202c;
+            --cor-texto: #e2e8f0;
+            --cor-texto-leve: #a0aec0;
+            --cor-card: #2d3748;
+            --cor-borda: #4a5568;
+            --cor-amarelo-fundo: #4a4a28;
+            --cor-amarelo-texto: #fef08a;
+        }
+
+        body {
+            font-family: 'Poppins', sans-serif;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+            margin: 0;
+            padding: 20px;
+            transition: var(--transicao);
+        }
+
+        .container {
+            max-width: 1600px;
+            margin: 0 auto;
+        }
+
+        /* --- CABEÇALHO --- */
+        header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            padding-bottom: 25px;
+            flex-wrap: wrap;
+            gap: 20px;
+            border-bottom: 1px solid var(--cor-borda);
+            margin-bottom: 25px;
+        }
+
+        .header-title {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+
+        header h1 {
+            margin: 0;
+            font-size: 2em;
+        }
+
+        .header-actions {
+            display: flex;
+            align-items: center;
+            gap: 15px;
+            flex-wrap: wrap;
+        }
+        
+        .grupo-botoes-export {
+            display: flex;
+            align-items: center;
+            gap: 5px;
+            background-color: var(--cor-fundo);
+            padding: 5px;
+            border-radius: 20px;
+            border: 1px solid var(--cor-borda);
+        }
+
+        /* --- BOTÕES --- */
+        .btn {
+            padding: 10px 20px;
+            border-radius: 8px;
+            text-decoration: none;
+            display: inline-flex;
+            align-items: center;
+            justify-content: center;
+            gap: 8px;
+            transition: var(--transicao);
+            font-weight: 500;
+            border: none;
+            cursor: pointer;
+        }
+        .btn:hover { filter: brightness(1.1); }
+        .btn-verde { background-color: var(--cor-verde); color: white; }
+        .btn-vermelho { background-color: var(--cor-vermelho); color: white; }
+        .btn-azul { background-color: var(--cor-azul); color: white; }
+
+        .btn-icon {
+            background: none;
+            border: none;
+            font-size: 1.2em;
+            cursor: pointer;
+            color: var(--cor-texto-leve);
+            transition: var(--transicao);
+            display: flex;
+            align-items: center;
+            justify-content: center;
+            width: 38px;
+            height: 38px;
+            border-radius: 50%;
+        }
+        .btn-icon:hover {
+            color: var(--cor-texto);
+            background-color: var(--cor-fundo);
+        }
+        .grupo-botoes-export .btn-icon { width: 32px; height: 32px; font-size: 1em; }
+
+
+        /* --- CARDS E WIDGETS --- */
+        .cards-resumo {
+            display: grid;
+            grid-template-columns: repeat(auto-fit, minmax(280px, 1fr));
+            gap: 25px;
+            margin-bottom: 25px;
+        }
+        .card {
+            background-color: var(--cor-card);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: var(--sombra-card);
+            border: 1px solid var(--cor-borda);
+            transition: var(--transicao);
+        }
+        .card:hover {
+            transform: translateY(-5px);
+            box-shadow: 0 10px 15px -3px rgb(0 0 0 / 0.1), 0 4px 6px -4px rgb(0 0 0 / 0.1);
+        }
+        .card.clicavel { cursor: pointer; }
+        .card-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 15px;
+            color: var(--cor-texto-leve);
+            font-weight: 500;
+        }
+        .card-header i { font-size: 2em; }
+        .card .valor { font-size: 2.2em; font-weight: 600; margin: 0;}
+        .card.receitas { border-left: 5px solid var(--cor-verde); } .card.receitas .valor, .card.receitas i { color: var(--cor-verde); }
+        .card.despesas { border-left: 5px solid var(--cor-vermelho); } .card.despesas .valor, .card.despesas i { color: var(--cor-vermelho); }
+        .card.saldo { border-left: 5px solid var(--cor-azul); } .card.saldo .valor, .card.saldo i { color: var(--cor-azul); }
+
+        .grid-principal {
+            display: grid;
+            grid-template-columns: 2fr 1fr;
+            gap: 25px;
+        }
+        .widget {
+            background-color: var(--cor-card);
+            padding: 25px;
+            border-radius: 12px;
+            box-shadow: var(--sombra-card);
+            border: 1px solid var(--cor-borda);
+            position: relative;
+        }
+        .widget h2 {
+            margin-top: 0;
+            margin-bottom: 20px;
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+        }
+
+        /* --- CONTÊINER DOS GRÁFICOS (NOVO) --- */
+        .chart-container {
+            position: relative;
+            width: 100%;
+            height: 400px; 
+        }
+
+        /* --- FILTROS --- */
+        .secao-filtros {
+            background-color: var(--cor-card);
+            padding: 20px;
+            border-radius: 12px;
+            box-shadow: var(--sombra-card);
+            margin-bottom: 25px;
+            display: flex;
+            flex-wrap: wrap;
+            gap: 20px;
+            align-items: center;
+            justify-content: space-between;
+        }
+        .grupo-filtro {
+            display: flex;
+            flex-wrap: wrap;
+            align-items: center;
+            gap: 10px;
+        }
+        .grupo-filtro label { font-weight: 500; }
+        .grupo-filtro input[type="date"], .grupo-filtro select {
+            padding: 8px;
+            border-radius: 6px;
+            border: 1px solid var(--cor-borda);
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+        }
+        .btn-filtro {
+            background-color: var(--cor-fundo);
+            border: 1px solid var(--cor-borda);
+            padding: 8px 18px;
+            border-radius: 20px;
+            cursor: pointer;
+            transition: var(--transicao);
+            font-weight: 500;
+        }
+        .btn-filtro.active {
+            background-color: var(--cor-azul);
+            color: white;
+            border-color: var(--cor-azul);
+        }
+
+        /* --- TABELAS --- */
+        .tabela-contas-wrapper {
+            max-height: 400px;
+            overflow-y: auto;
+        }
+        .tabela-contas {
+            width: 100%;
+            border-collapse: collapse;
+        }
+        .tabela-contas th, .tabela-contas td {
+            text-align: left;
+            padding: 14px;
+            border-bottom: 1px solid var(--cor-borda);
+        }
+        .tabela-contas th:last-child, .tabela-contas td:last-child {
+            text-align: right;
+        }
+        .tabela-contas thead {
+            position: sticky;
+            top: 0;
+            background-color: var(--cor-card);
+            z-index: 1;
+        }
+        .tabela-contas tbody tr:hover {
+            background-color: var(--cor-fundo);
+        }
+        .tabela-contas .status-Pendente {
+            background-color: var(--cor-amarelo-fundo);
+            color: var(--cor-amarelo-texto);
+            font-weight: 500;
+        }
+        .tabela-contas .acoes {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+        }
+        
+        /* --- MODAIS E NOTIFICAÇÕES --- */
+        .modal-container {
+            position: fixed;
+            top: 0;
+            left: 0;
+            width: 100%;
+            height: 100%;
+            background-color: rgba(0,0,0,0.6);
+            display: none;
+            justify-content: center;
+            align-items: center;
+            z-index: 1000;
+            animation: fadeIn 0.3s ease;
+            padding: 15px;
+            box-sizing: border-box;
+        }
+        .modal-content {
+            background-color: var(--cor-card);
+            padding: 30px;
+            border-radius: 12px;
+            width: 100%;
+            max-width: 600px;
+            box-shadow: 0 10px 25px rgba(0,0,0,0.2);
+            animation: scaleUp 0.3s ease;
+            max-height: 90vh;
+            display: flex;
+            flex-direction: column;
+        }
+        .modal-header {
+            display: flex;
+            justify-content: space-between;
+            align-items: center;
+            margin-bottom: 20px;
+            padding-bottom: 15px;
+            border-bottom: 1px solid var(--cor-borda);
+        }
+        .modal-header h2 { margin: 0; }
+        .modal-body {
+            overflow-y: auto;
+            padding-right: 15px;
+            margin-right: -15px;
+        }
+        @keyframes fadeIn { from { opacity: 0; } to { opacity: 1; } }
+        @keyframes scaleUp { from { transform: scale(0.9); opacity: 0; } to { transform: scale(1); opacity: 1; } }
+
+        /* Formulário no Modal */
+        .modal-content form { display: flex; flex-direction: column; gap: 15px; }
+        .form-grupo { display: flex; flex-direction: column; gap: 5px; }
+        .form-grupo label { font-weight: 500; font-size: 0.9em; color: var(--cor-texto-leve); }
+        .modal-content input, .modal-content select {
+            padding: 12px;
+            border: 1px solid var(--cor-borda);
+            border-radius: 8px;
+            font-size: 1em;
+            background-color: var(--cor-fundo);
+            color: var(--cor-texto);
+            transition: var(--transicao);
+        }
+        .modal-content input:focus, .modal-content select:focus {
+            outline: none;
+            border-color: var(--cor-azul);
+            box-shadow: 0 0 0 3px rgba(59, 130, 246, 0.3);
+        }
+        .form-botoes {
+            display: flex;
+            gap: 10px;
+            justify-content: flex-end;
+            margin-top: 10px;
+        }
+        
+        /* Notificações (Toast) */
+        #toast-container {
+            position: fixed;
+            top: 20px;
+            right: 20px;
+            z-index: 2000;
+            display: flex;
+            flex-direction: column;
+            gap: 10px;
+        }
+        .toast {
+            padding: 15px 20px;
+            border-radius: 8px;
+            color: white;
+            font-weight: 500;
+            box-shadow: 0 4px 12px rgba(0,0,0,0.15);
+            display: flex;
+            align-items: center;
+            gap: 10px;
+            animation: slideIn 0.3s ease-out;
+            min-width: 250px;
+        }
+        .toast.success { background-color: var(--cor-verde); }
+        .toast.error { background-color: var(--cor-vermelho); }
+        @keyframes slideIn { from { transform: translateX(100%); opacity: 0; } to { transform: translateX(0); opacity: 1; } }
+
+        /* --- ELEMENTOS DE CARGA E ESTADOS VAZIOS --- */
+        .loading-container, .empty-state {
+            display: flex;
+            justify-content: center;
+            align-items: center;
+            min-height: 200px;
+            text-align: center;
+            color: var(--cor-texto-leve);
+            font-size: 1.2em;
+        }
+        .empty-state { display: none; } /* Escondido por padrão */
+        
+        /* --- RESPONSIVIDADE --- */
+        
+        /* Tablets e Telas Menores */
+        @media (max-width: 1200px) {
+            .grid-principal {
+                grid-template-columns: 1fr;
+            }
+        }
+
+        /* Celulares */
+        @media (max-width: 768px) {
+            body { padding: 10px; }
+            header {
+                flex-direction: column;
+                align-items: flex-start;
+            }
+            header h1 { font-size: 1.6em; }
+            .header-actions { width: 100%; justify-content: space-between; }
+            .grupo-botoes-registro { display: flex; gap: 10px; flex-grow: 1; justify-content: flex-end;}
+            .grupo-botoes-registro .btn { padding: 10px; font-size: 0.8em;}
+
+            .secao-filtros {
+                flex-direction: column;
+                align-items: stretch;
+                gap: 15px;
+            }
+            .grupo-filtro { justify-content: center; }
+            #filtro-personalizado {
+                flex-direction: column;
+                align-items: stretch;
+            }
+
+            /* Altura dos gráficos em telas menores */
+            .chart-container {
+                height: 300px;
+            }
+
+            /* Tabela Responsiva */
+            .tabela-contas thead { display: none; }
+            .tabela-contas tr {
+                display: block;
+                border: 1px solid var(--cor-borda);
+                border-radius: 8px;
+                padding: 15px;
+                margin-bottom: 15px;
+            }
+            .tabela-contas td {
+                display: flex;
+                justify-content: space-between;
+                align-items: center;
+                padding: 8px 0;
+                border: none;
+                text-align: right;
+            }
+            .tabela-contas td::before {
+                content: attr(data-label);
+                font-weight: bold;
+                text-align: left;
+                color: var(--cor-texto);
+                margin-right: 10px;
+            }
+            .tabela-contas td.acoes {
+                justify-content: flex-end;
+                padding-top: 10px;
+            }
+            .tabela-contas td.acoes::before { display: none; }
+        }
+    </style>
+</head>
+<body>
+    <div id="toast-container"></div>
+
+    <div class="container">
+        <header>
+            <div class="header-title">
+                <h1>Dashboard Financeiro</h1>
+                <button class="btn-icon" id="btn-refresh" title="Recarregar Dados"><i class="fa-solid fa-sync-alt"></i></button>
+            </div>
+            <div class="header-actions">
+                <fieldset class="grupo-botoes-export">
+                    <legend style="font-size: 0.7em; margin-left: 10px; color: var(--cor-texto-leve);">Exportar</legend>
+                    <button class="btn-icon" id="btn-export-pdf-receitas" title="Exportar PDF de Receitas"><i class="fa-solid fa-file-pdf" style="color: var(--cor-verde)"></i></button>
+                    <button class="btn-icon" id="btn-export-csv-receitas" title="Exportar CSV de Receitas"><i class="fa-solid fa-file-csv" style="color: var(--cor-verde)"></i></button>
+                    <button class="btn-icon" id="btn-export-pdf-despesas" title="Exportar PDF de Despesas"><i class="fa-solid fa-file-pdf" style="color: var(--cor-vermelho)"></i></button>
+                    <button class="btn-icon" id="btn-export-csv-despesas" title="Exportar CSV de Despesas"><i class="fa-solid fa-file-csv" style="color: var(--cor-vermelho)"></i></button>
+                </fieldset>
+                <button class="btn-icon" id="btn-toggle-theme" title="Mudar tema"><i class="fa-solid fa-moon"></i></button>
+                <div class="grupo-botoes-registro">
+                    <button id="btn-abrir-modal-divisao" class="btn btn-azul" title="Planejador de Divisão de Renda"><i class="fa-solid fa-sack-dollar"></i> Dividir Renda</button>
+                    <button id="btn-abrir-modal-receita" class="btn btn-verde"><i class="fa-solid fa-plus"></i> Receita</button>
+                    <button id="btn-abrir-modal-despesa" class="btn btn-vermelho"><i class="fa-solid fa-minus"></i> Despesa</button>
+                </div>
+            </div>
+        </header>
+
+        <main>
+            <section class="cards-resumo">
+                <div class="card receitas clicavel" id="card-receitas"><div class="card-header"><span>Receitas</span><i class="fa-solid fa-circle-arrow-up"></i></div><p class="valor" id="total-receitas">R$ 0,00</p></div>
+                <div class="card despesas clicavel" id="card-despesas"><div class="card-header"><span>Despesas</span><i class="fa-solid fa-circle-arrow-down"></i></div><p class="valor" id="total-despesas">R$ 0,00</p></div>
+                <div class="card saldo clicavel" id="card-saldo"><div class="card-header"><span>Saldo</span><i class="fa-solid fa-scale-balanced"></i></div><p class="valor" id="saldo-total">R$ 0,00</p></div>
+            </section>
+            
+            <section class="secao-filtros">
+                <div class="grupo-filtro" id="filtro-tipo"><button class="btn-filtro active" data-tipo="Todos">Todos</button><button class="btn-filtro" data-tipo="Receita">Receitas</button><button class="btn-filtro" data-tipo="Despesa">Despesas</button></div>
+                <div class="grupo-filtro" id="filtro-periodo"><button class="btn-filtro" data-periodo="Diario">Hoje</button><button class="btn-filtro" data-periodo="Semanal">Semana</button><button class="btn-filtro active" data-periodo="Mensal">Mês</button><button class="btn-filtro" data-periodo="Anual">Ano</button></div>
+                <div class="grupo-filtro" id="filtro-personalizado">
+                    <label for="data-inicio">De:</label><input type="date" id="data-inicio" aria-label="Data de início">
+                    <label for="data-fim">Até:</label><input type="date" id="data-fim" aria-label="Data de fim">
+                    <button id="btn-aplicar-filtro-data" class="btn-filtro">Aplicar</button>
+                </div>
+            </section>
+
+            <div id="loading" class="loading-container"><p><i class="fa-solid fa-spinner fa-spin"></i> Carregando dados...</p></div>
+            
+            <div id="dashboard-content" style="display:none;">
+                <section class="grid-principal">
+                    <div class="widget">
+                        <h2 id="titulo-grafico">Evolução Financeira</h2>
+                        <div class="chart-container" id="grafico-linhas-container">
+                            <canvas id="grafico-linhas"></canvas>
+                        </div>
+                        <div id="grafico-linhas-vazio" class="empty-state"><p><i class="fa-solid fa-chart-line"></i><br>Sem dados para exibir.</p></div>
+                    </div>
+                    <div class="widget">
+                        <h2 id="titulo-categorias">Top 10 Despesas por Fonte</h2>
+                        <div class="chart-container" id="grafico-categorias-container">
+                             <canvas id="grafico-categorias"></canvas>
+                        </div>
+                        <div id="grafico-categorias-vazio" class="empty-state"><p><i class="fa-solid fa-chart-pie"></i><br>Nenhuma despesa registrada.</p></div>
+                    </div>
+                    <div class="widget" style="grid-column: 1 / -1;">
+                        <h2>Planejador de Contas <button class="btn-icon" id="btn-abrir-modal-planejador" title="Adicionar conta a planejar"><i class="fa-solid fa-plus"></i></button></h2>
+                        <div class="tabela-contas-wrapper">
+                            <table class="tabela-contas">
+                                <thead><tr><th>Vencimento</th><th>Fonte</th><th>Valor</th><th>Ações</th></tr></thead>
+                                <tbody id="corpo-tabela-planejador"></tbody>
+                            </table>
+                        </div>
+                        <div id="planejador-vazio" class="empty-state"><p><i class="fa-solid fa-calendar-check"></i><br>Nenhuma conta pendente.</p></div>
+                    </div>
+                </section>
+            </div>
+        </main>
+    </div>
+
+    <div id="modal-detalhes" class="modal-container">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="modal-detalhes-titulo">Detalhes</h2><button id="btn-fechar-detalhes" class="btn-icon" aria-label="Fechar">&times;</button></div>
+            <div id="modal-detalhes-conteudo" class="modal-body"></div>
+        </div>
+    </div>
+
+    <div id="modal-registro" class="modal-container">
+        <div class="modal-content">
+            <div class="modal-header"><h2 id="modal-registro-titulo">Registrar</h2><button id="btn-fechar-registro" class="btn-icon" aria-label="Fechar">&times;</button></div>
+            <div class="modal-body">
+                <form id="form-registro" novalidate>
+                    <input type="hidden" id="reg-id">
+                    <input type="hidden" id="reg-tipo">
+                    <div class="form-grupo"><label for="reg-data">Data da Transação</label><input type="date" id="reg-data" required></div>
+                    <div class="form-grupo"><label for="reg-local">Local</label><input type="text" id="reg-local" list="datalist-locais" placeholder="Selecione ou digite" required></div>
+                    <div class="form-grupo"><label for="reg-fonte">Fonte</label><input type="text" id="reg-fonte" list="datalist-fontes" placeholder="Selecione ou digite" required></div>
+                    <div class="form-grupo"><label for="reg-valor">Valor (R$)</label><input type="text" inputmode="decimal" id="reg-valor" placeholder="150,50" required></div>
+                    <div class="form-grupo" id="grupo-status"><label for="reg-status">Status</label><select id="reg-status"><option value="Pago">Já foi pago</option><option value="Pendente">Conta a pagar (pendente)</option></select></div>
+                    <div class="form-botoes">
+                        <button type="button" class="btn" id="btn-cancelar-registro" style="background-color: #ccc;">Cancelar</button>
+                        <button type="submit" class="btn" id="btn-salvar-registro"><span class="btn-text">Salvar</span><i class="fa-solid fa-spinner fa-spin" style="display: none;"></i></button>
+                    </div>
+                </form>
+            </div>
+        </div>
+    </div>
+    
+    <div id="modal-divisao-renda" class="modal-container">
+        <div class="modal-content">
+            <div class="modal-header">
+                <h2>Planejador de Divisão de Renda</h2>
+                <button id="btn-fechar-divisao" class="btn-icon" aria-label="Fechar">&times;</button>
+            </div>
+            <div class="modal-body">
+                <p>Use esta ferramenta para planejar como sua renda será distribuída de acordo com as porcentagens definidas.</p>
+                <form id="form-divisao-renda" novalidate>
+                    <div class="form-grupo">
+                        <label for="renda-total">Qual o valor total da sua renda mensal?</label>
+                        <input type="text" inputmode="decimal" id="renda-total" placeholder="3.000,00" required>
+                    </div>
+                    <div class="form-botoes">
+                        <button type="submit" class="btn btn-azul">Calcular Divisão</button>
+                    </div>
+                </form>
+                <div id="resultado-divisao" style="margin-top: 25px;">
+                    </div>
+            </div>
+        </div>
+    </div>
+
+    <datalist id="datalist-locais"></datalist>
+    <datalist id="datalist-fontes"></datalist>
+    
+<script>
+document.addEventListener('DOMContentLoaded', function() {
+    'use strict';
+
+    // --- CONFIGURAÇÃO SUPABASE ---
+    const SUPABASE_URL = '';
+    const SUPABASE_ANON_KEY = '';
+    const supabase = window.supabase.createClient(SUPABASE_URL, SUPABASE_ANON_KEY);
+
+    // --- DADOS LOCAIS (Para sugestões) ---
+    const locais = ["Panevie", "];
+    const fontesReceita = [""];
+    const fontesDespesa = [""];
+
+    // --- VARIÁVEIS GLOBAIS ---
+    let transacoesGeral = [];
+    let transacoesFiltradas = [];
+    let graficoLinhas = null;
+    let graficoCategorias = null;
+
+    // --- SELETORES DE ELEMENTOS ---
+    const loadingDiv = document.getElementById('loading');
+    const dashboardContentDiv = document.getElementById('dashboard-content');
+    const toastContainer = document.getElementById('toast-container');
+    const corpoTabelaPlanejador = document.getElementById('corpo-tabela-planejador');
+    
+    // --- FUNÇÕES AUXILIARES ---
+    const formatarMoeda = (valor) => (valor || 0).toLocaleString('pt-BR', { style: 'currency', currency: 'BRL' });
+    const formatarData = (data) => data instanceof Date && !isNaN(data) ? data.toLocaleDateString('pt-BR', { timeZone: 'UTC' }) : 'Data inválida';
+    const popularDatalist = (datalistEl, lista) => { datalistEl.innerHTML = ''; lista.sort().forEach(item => { const option = document.createElement('option'); option.value = item; datalistEl.appendChild(option); }); };
+    
+    function formatarInputMoeda(inputEl) {
+        let valor = inputEl.value.replace(/\D/g, '');
+        valor = (parseInt(valor, 10) / 100).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+        if (valor === 'NaN') valor = '';
+        inputEl.value = valor;
+    }
+
+    function showToast(message, type = 'success') {
+        const toast = document.createElement('div');
+        toast.className = `toast ${type}`;
+        const icon = type === 'success' ? 'fa-check-circle' : 'fa-times-circle';
+        toast.innerHTML = `<i class="fa-solid ${icon}"></i> ${message}`;
+        toastContainer.appendChild(toast);
+        setTimeout(() => toast.remove(), 4000);
+    }
+
+    function obterDescricaoFiltro() {
+        const periodoBtn = document.querySelector('#filtro-periodo .active');
+        const dataInicioInput = document.getElementById('data-inicio');
+        const dataFimInput = document.getElementById('data-fim');
+        if (periodoBtn) return `(${periodoBtn.textContent})`;
+        if (dataInicioInput.value && dataFimInput.value) {
+            const inicio = new Date(`${dataInicioInput.value}T00:00:00`).toLocaleDateString('pt-BR');
+            const fim = new Date(`${dataFimInput.value}T00:00:00`).toLocaleDateString('pt-BR');
+            return `(de ${inicio} a ${fim})`;
+        }
+        return '(Todos os Períodos)';
+    }
+
+    // --- FUNÇÕES DE EXPORTAÇÃO ---
+    function exportarParaPDF(tipo) {
+        const dadosParaExportar = transacoesFiltradas.filter(t => t.tipo === tipo);
+        if (dadosParaExportar.length === 0) {
+            showToast(`Nenhuma ${tipo.toLowerCase()} para exportar no período selecionado.`, 'error');
+            return;
+        }
+        const { jsPDF } = window.jspdf;
+        const doc = new jsPDF();
+        doc.text(`Relatório de ${tipo}s ${obterDescricaoFiltro()}`, 14, 15);
+        const tableData = dadosParaExportar.map(t => [formatarData(t.Data), t.local || '-', t.fonte || '-', formatarMoeda(t.valor)]);
+        doc.autoTable({ head: [['Data', 'Local', 'Fonte', 'Valor']], body: tableData, startY: 25 });
+        doc.save(`relatorio-${tipo.toLowerCase()}-${new Date().toISOString().split('T')[0]}.pdf`);
+    }
+
+    function exportarParaCSV(tipo) {
+        const dadosParaExportar = transacoesFiltradas.filter(t => t.tipo === tipo);
+        if (dadosParaExportar.length === 0) {
+            showToast(`Nenhuma ${tipo.toLowerCase()} para exportar no período selecionado.`, 'error');
+            return;
+        }
+        const headers = ['Data', 'Local', 'Fonte', 'Valor'];
+        let csvContent = "data:text/csv;charset=utf-8," + headers.join(",") + "\n";
+        dadosParaExportar.forEach(t => {
+            const valorNumerico = (t.valor || 0).toFixed(2).replace('.', ',');
+            const row = [formatarData(t.Data), `"${t.local || '-'}"`, `"${t.fonte || '-'}"`, `"${valorNumerico}"`];
+            csvContent += row.join(",") + "\n";
+        });
+        const link = document.createElement("a");
+        link.setAttribute("href", encodeURI(csvContent));
+        link.setAttribute("download", `relatorio-${tipo.toLowerCase()}-${new Date().toISOString().split('T')[0]}.csv`);
+        document.body.appendChild(link);
+        link.click();
+        document.body.removeChild(link);
+    }
+    
+    // --- FUNÇÕES DE DADOS (SUPABASE) ---
+    async function carregarDadosIniciais() {
+        loadingDiv.style.display = 'flex';
+        dashboardContentDiv.style.display = 'none';
+        document.getElementById('btn-refresh').firstElementChild.classList.add('fa-spin');
+        try {
+            const { data, error } = await supabase.from('transacoes').select('*');
+            if (error) throw error;
+            transacoesGeral = data.map(item => ({ ...item, Data: new Date(`${item.data}T00:00:00`) })).filter(t => t.Data instanceof Date && !isNaN(t.Data));
+            aplicarFiltros();
+            loadingDiv.style.display = 'none';
+            dashboardContentDiv.style.display = 'block';
+        } catch (error) {
+            console.error('Erro ao buscar dados do Supabase:', error);
+            showToast(`Falha ao carregar: ${error.message}`, 'error');
+            loadingDiv.innerHTML = `<p style="color:var(--cor-vermelho);"><i class="fa-solid fa-circle-xmark"></i> Falha ao carregar.</p>`;
+        } finally {
+            document.getElementById('btn-refresh').firstElementChild.classList.remove('fa-spin');
+        }
+    }
+
+    async function submeterDados(dados, id = null) {
+        const btnSalvar = document.getElementById('btn-salvar-registro');
+        const btnText = btnSalvar.querySelector('.btn-text');
+        const btnSpinner = btnSalvar.querySelector('.fa-spinner');
+        btnText.textContent = 'Salvando...';
+        btnSpinner.style.display = 'inline-block';
+        btnSalvar.disabled = true;
+        try {
+            const { error } = id
+                ? await supabase.from('transacoes').update(dados).eq('id', id)
+                : await supabase.from('transacoes').insert([dados]);
+            if (error) throw error;
+            showToast(`Transação ${id ? 'atualizada' : 'registrada'} com sucesso!`);
+            document.getElementById('modal-registro').style.display = 'none';
+            carregarDadosIniciais();
+        } catch (error) {
+            showToast(`Erro ao salvar: ${error.message}`, 'error');
+        } finally {
+            btnSalvar.disabled = false;
+            btnText.textContent = 'Salvar';
+            btnSpinner.style.display = 'none';
+        }
+    }
+
+    async function excluirTransacao(id) {
+        try {
+            const { error } = await supabase.from('transacoes').delete().eq('id', id);
+            if (error) throw error;
+            showToast('Transação excluída com sucesso!');
+            carregarDadosIniciais();
+        } catch (error) {
+            showToast(`Erro ao excluir: ${error.message}`, 'error');
+        }
+    }
+    
+    // --- FUNÇÕES DE RENDERIZAÇÃO E ATUALIZAÇÃO ---
+    function aplicarFiltros() {
+        const tipoFiltro = document.querySelector('#filtro-tipo .active').dataset.tipo;
+        const periodoFiltroBtn = document.querySelector('#filtro-periodo .active');
+        const dataInicioInput = document.getElementById('data-inicio');
+        const dataFimInput = document.getElementById('data-fim');
+        const hoje = new Date();
+
+        transacoesFiltradas = transacoesGeral.filter(t => t.status !== 'Pendente').filter(t => {
+            if (!t || !t.Data) return false;
+            if (tipoFiltro !== 'Todos' && t.tipo !== tipoFiltro) return false;
+            if (dataInicioInput.value && dataFimInput.value) {
+                const dataInicio = new Date(`${dataInicioInput.value}T00:00:00`);
+                const dataFim = new Date(`${dataFimInput.value}T23:59:59`);
+                return t.Data >= dataInicio && t.Data <= dataFim;
+            } else if (periodoFiltroBtn) {
+                switch (periodoFiltroBtn.dataset.periodo) {
+                    case 'Diario': return dateFns.isSameDay(t.Data, hoje);
+                    case 'Semanal': return dateFns.isThisWeek(t.Data, { weekStartsOn: 1 });
+                    case 'Mensal': return dateFns.isSameMonth(t.Data, hoje);
+                    case 'Anual': return dateFns.isSameYear(t.Data, hoje);
+                    default: return true;
+                }
+            }
+            return true;
+        });
+        atualizarDashboard(transacoesFiltradas);
+        renderizarPlanejador();
+    }
+
+    function atualizarDashboard(transacoes) {
+        document.getElementById('titulo-grafico').textContent = `Evolução Financeira ${obterDescricaoFiltro()}`;
+        atualizarCards(transacoes);
+        criarGraficoLinhas(transacoes);
+        criarGraficoCategorias(transacoes);
+    }
+
+    function atualizarCards(transacoes) {
+        const receitas = transacoes.filter(t => t.tipo === 'Receita').reduce((acc, t) => acc + (t.valor || 0), 0);
+        const despesas = transacoes.filter(t => t.tipo === 'Despesa').reduce((acc, t) => acc + (t.valor || 0), 0);
+        const saldo = receitas - despesas;
+        document.getElementById('total-receitas').textContent = formatarMoeda(receitas);
+        document.getElementById('total-despesas').textContent = formatarMoeda(despesas);
+        document.getElementById('saldo-total').textContent = formatarMoeda(saldo);
+    }
+    
+    function renderizarPlanejador() {
+        const planejadorItens = transacoesGeral.filter(t => t.status === 'Pendente').sort((a, b) => a.Data - b.Data);
+        corpoTabelaPlanejador.innerHTML = '';
+        document.getElementById('planejador-vazio').style.display = planejadorItens.length === 0 ? 'flex' : 'none';
+        corpoTabelaPlanejador.style.display = planejadorItens.length > 0 ? 'table-row-group' : 'none';
+        
+        planejadorItens.forEach(item => {
+            const tr = document.createElement('tr');
+            tr.className = `status-Pendente`;
+            tr.innerHTML = `
+                <td data-label="Vencimento">${formatarData(item.Data)}</td>
+                <td data-label="Fonte">${item.fonte}</td>
+                <td data-label="Valor">${formatarMoeda(item.valor)}</td>
+                <td class="acoes">
+                    <button class="btn-icon btn-marcar-pago" data-id="${item.id}" title="Marcar como Pago"><i class="fa-solid fa-check"></i></button>
+                    <button class="btn-icon btn-edit" data-id="${item.id}" title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                    <button class="btn-icon btn-delete" data-id="${item.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                </td>`;
+            corpoTabelaPlanejador.appendChild(tr);
+        });
+    }
+
+    function criarGraficoLinhas(transacoes) {
+        const container = document.getElementById('grafico-linhas-container');
+        const emptyState = document.getElementById('grafico-linhas-vazio');
+        if (graficoLinhas) graficoLinhas.destroy();
+        
+        if (transacoes.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'flex';
+            return;
+        }
+        container.style.display = 'block';
+        emptyState.style.display = 'none';
+
+        const ctx = document.getElementById('grafico-linhas').getContext('2d');
+        const periodoFiltroBtn = document.querySelector('#filtro-periodo .active');
+        let unit = 'day';
+        if (periodoFiltroBtn) {
+            switch (periodoFiltroBtn.dataset.periodo) {
+                case 'Diario': unit = 'hour'; break; case 'Semanal': case 'Mensal': unit = 'day'; break; case 'Anual': unit = 'month'; break;
+            }
+        }
+        const dadosAgrupados = transacoes.reduce((acc, t) => {
+            const d = t.Data;
+            if (!d || isNaN(d.getTime())) return acc;
+            let chaveObj;
+            if (unit === 'hour') chaveObj = new Date(d.getFullYear(), d.getMonth(), d.getDate(), d.getHours());
+            else if (unit === 'day') chaveObj = new Date(d.getFullYear(), d.getMonth(), d.getDate());
+            else chaveObj = new Date(d.getFullYear(), d.getMonth(), 1);
+            const chave = chaveObj.toISOString();
+            if (!acc[chave]) acc[chave] = { receitas: 0, despesas: 0 };
+            if (t.tipo === 'Receita') acc[chave].receitas += t.valor || 0;
+            else if (t.tipo === 'Despesa') acc[chave].despesas += t.valor || 0;
+            return acc;
+        }, {});
+        const labels = Object.keys(dadosAgrupados).sort((a, b) => new Date(a) - new Date(b));
+        graficoLinhas = new Chart(ctx, { type: 'line', data: { labels, datasets: [{ label: 'Receitas', data: labels.map(key => dadosAgrupados[key].receitas), borderColor: 'var(--cor-verde)', backgroundColor: 'rgba(16, 185, 129, 0.2)', fill: true, tension: 0.3 }, { label: 'Despesas', data: labels.map(key => dadosAgrupados[key].despesas), borderColor: 'var(--cor-vermelho)', backgroundColor: 'rgba(239, 68, 68, 0.2)', fill: true, tension: 0.3 }] }, options: { responsive: true, maintainAspectRatio: false, scales: { x: { type: 'time', time: { unit, tooltipFormat: 'dd/MM/yyyy' } }, y: { beginAtZero: true, ticks: { callback: value => formatarMoeda(value) } } } } });
+    }
+
+    function criarGraficoCategorias(transacoes) {
+        const container = document.getElementById('grafico-categorias-container');
+        const emptyState = document.getElementById('grafico-categorias-vazio');
+        if (graficoCategorias) graficoCategorias.destroy();
+        const despesas = transacoes.filter(t => t.tipo === 'Despesa');
+
+        if (despesas.length === 0) {
+            container.style.display = 'none';
+            emptyState.style.display = 'flex';
+            return;
+        }
+        container.style.display = 'block';
+        emptyState.style.display = 'none';
+
+        const ctx = document.getElementById('grafico-categorias').getContext('2d');
+        const dadosAgrupados = despesas.reduce((acc, t) => {
+            const fonte = t.fonte || 'Não especificado';
+            if (!acc[fonte]) acc[fonte] = 0;
+            acc[fonte] += t.valor || 0;
+            return acc;
+        }, {});
+        const top10 = Object.entries(dadosAgrupados).sort(([, a], [, b]) => b - a).slice(0, 10);
+        graficoCategorias = new Chart(ctx, { type: 'bar', data: { labels: top10.map(([fonte]) => fonte), datasets: [{ label: `Valor Total`, data: top10.map(([, valor]) => valor), backgroundColor: 'rgba(239, 68, 68, 0.7)' }] }, options: { indexAxis: 'y', responsive: true, maintainAspectRatio: false, plugins: { legend: { display: false } }, scales: { x: { ticks: { callback: value => formatarMoeda(value) } } } } });
+    }
+
+    // --- FUNÇÕES DE MODAL ---
+    function exibirDetalhesModal(tipo) {
+        const modal = document.getElementById('modal-detalhes');
+        const transacoesParaExibir = tipo === 'Saldo' ? transacoesFiltradas : transacoesFiltradas.filter(t => t.tipo === tipo);
+        transacoesParaExibir.sort((a, b) => b.Data - a.Data);
+        
+        let titulo = tipo === 'Saldo' ? 'Detalhes do Saldo' : `Detalhes de ${tipo}s`;
+        document.getElementById('modal-detalhes-titulo').textContent = `${titulo} ${obterDescricaoFiltro()}`;
+
+        let html = '<div class="empty-state" style="display:flex;"><p>Nenhuma transação encontrada.</p></div>';
+        if (transacoesParaExibir.length > 0) {
+            const tableRows = transacoesParaExibir.map(t => `
+                <tr style="color: ${t.tipo === 'Receita' ? 'var(--cor-verde)' : 'var(--cor-vermelho)'}">
+                    <td data-label="Data">${formatarData(t.Data)}</td>
+                    <td data-label="Local">${t.local || '-'}</td>
+                    <td data-label="Fonte">${t.fonte || '-'}</td>
+                    <td data-label="Valor" style="text-align:right;">${formatarMoeda(t.valor)}</td>
+                    <td class="acoes">
+                        <button class="btn-icon btn-edit" data-id="${t.id}" title="Editar"><i class="fa-solid fa-pencil"></i></button>
+                        <button class="btn-icon btn-delete" data-id="${t.id}" title="Excluir"><i class="fa-solid fa-trash"></i></button>
+                    </td>
+                </tr>`).join('');
+            html = `<div class="tabela-contas-wrapper"><table class="tabela-contas"><thead><tr><th>Data</th><th>Local</th><th>Fonte</th><th style="text-align:right;">Valor</th><th>Ações</th></tr></thead><tbody>${tableRows}</tbody></table></div>`;
+        }
+        document.getElementById('modal-detalhes-conteudo').innerHTML = html;
+        modal.style.display = 'flex';
+    }
+
+    function abrirModalRegistro(tipo, id = null) {
+        const modal = document.getElementById('modal-registro');
+        const form = document.getElementById('form-registro');
+        form.reset();
+        document.getElementById('reg-id').value = id || '';
+        document.getElementById('reg-tipo').value = tipo;
+        popularDatalist(document.getElementById('datalist-locais'), locais);
+
+        const transacao = id ? transacoesGeral.find(t => t.id === id) : null;
+        if (transacao) {
+            document.getElementById('modal-registro-titulo').textContent = 'Editar Transação';
+            document.getElementById('reg-data').value = transacao.data;
+            document.getElementById('reg-local').value = transacao.local;
+            document.getElementById('reg-fonte').value = transacao.fonte;
+            document.getElementById('reg-valor').value = (transacao.valor || 0).toLocaleString('pt-BR', { minimumFractionDigits: 2 });
+            document.getElementById('reg-status').value = transacao.status;
+        } else {
+            document.getElementById('reg-data').valueAsDate = new Date();
+        }
+
+        const btnSalvar = document.getElementById('btn-salvar-registro');
+        const grupoStatus = document.getElementById('grupo-status');
+        if (tipo === 'Receita') {
+            if (!id) document.getElementById('modal-registro-titulo').textContent = 'Registrar Nova Receita';
+            popularDatalist(document.getElementById('datalist-fontes'), fontesReceita);
+            grupoStatus.style.display = 'none';
+            btnSalvar.className = 'btn btn-verde';
+        } else {
+            if (!id) document.getElementById('modal-registro-titulo').textContent = 'Registrar Nova Despesa';
+            popularDatalist(document.getElementById('datalist-fontes'), fontesDespesa);
+            grupoStatus.style.display = 'flex';
+            btnSalvar.className = 'btn btn-vermelho';
+        }
+        modal.style.display = 'flex';
+    }
+
+    // --- INICIALIZAÇÃO E EVENT LISTENERS ---
+    function aplicarTema(tema) {
+        document.body.classList.toggle('dark-mode', tema === 'dark');
+        document.getElementById('btn-toggle-theme').innerHTML = tema === 'dark' ? '<i class="fa-solid fa-sun"></i>' : '<i class="fa-solid fa-moon"></i>';
+    }
+
+    document.getElementById('btn-toggle-theme').addEventListener('click', () => {
+        const temaAtual = document.body.classList.contains('dark-mode') ? 'light' : 'dark';
+        localStorage.setItem('temaDashboard', temaAtual);
+        aplicarTema(temaAtual);
+    });
+
+    document.getElementById('filtro-tipo').addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            document.querySelectorAll('#filtro-tipo .btn-filtro').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            aplicarFiltros();
+        }
+    });
+
+    document.getElementById('filtro-periodo').addEventListener('click', (e) => {
+        if (e.target.tagName === 'BUTTON') {
+            document.querySelectorAll('#filtro-periodo .btn-filtro').forEach(btn => btn.classList.remove('active'));
+            e.target.classList.add('active');
+            document.getElementById('data-inicio').value = '';
+            document.getElementById('data-fim').value = '';
+            aplicarFiltros();
+        }
+    });
+    
+    document.getElementById('btn-aplicar-filtro-data').addEventListener('click', () => {
+        if (document.getElementById('data-inicio').value && document.getElementById('data-fim').value) {
+            document.querySelectorAll('#filtro-periodo .btn-filtro').forEach(btn => btn.classList.remove('active'));
+            aplicarFiltros();
+        } else {
+            showToast('Por favor, selecione data de início e fim.', 'error');
+        }
+    });
+
+    document.getElementById('form-registro').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const id = document.getElementById('reg-id').value;
+        const valorInput = document.getElementById('reg-valor').value.replace(/\./g, '').replace(',', '.');
+        if (isNaN(parseFloat(valorInput))) {
+            showToast('Por favor, insira um valor numérico válido.', 'error');
+            return;
+        }
+        const tipo = document.getElementById('reg-tipo').value;
+        const dadosParaEnviar = {
+            data: document.getElementById('reg-data').value,
+            tipo: tipo,
+            valor: parseFloat(valorInput),
+            fonte: document.getElementById('reg-fonte').value,
+            local: document.getElementById('reg-local').value,
+            status: tipo === 'Despesa' ? document.getElementById('reg-status').value : 'Pago'
+        };
+        submeterDados(dadosParaEnviar, id ? parseInt(id) : null);
+    });
+    
+    document.getElementById('reg-valor').addEventListener('keyup', (e) => formatarInputMoeda(e.target));
+    
+    document.body.addEventListener('click', function(e) {
+        const btnDelete = e.target.closest('.btn-delete');
+        if (btnDelete) {
+            const transacaoId = parseInt(btnDelete.dataset.id);
+            const transacao = transacoesGeral.find(t => t.id === transacaoId);
+            if (transacao && confirm(`Tem certeza que deseja excluir "${transacao.fonte}" de ${formatarMoeda(transacao.valor)}?`)) {
+                excluirTransacao(transacaoId);
+            }
+        }
+        const btnEdit = e.target.closest('.btn-edit');
+        if (btnEdit) {
+            const transacaoId = parseInt(btnEdit.dataset.id);
+            const transacao = transacoesGeral.find(t => t.id === transacaoId);
+            if (transacao) abrirModalRegistro(transacao.tipo, transacaoId);
+        }
+        const btnMarcarPago = e.target.closest('.btn-marcar-pago');
+        if (btnMarcarPago) {
+            const transacaoId = parseInt(btnMarcarPago.dataset.id);
+            const item = transacoesGeral.find(t => t.id === transacaoId);
+            if (item && confirm(`Marcar a despesa "${item.fonte}" como paga?`)) {
+                supabase.from('transacoes').update({ status: 'Pago' }).eq('id', transacaoId).then(({ error }) => {
+                    if (error) showToast(error.message, 'error');
+                    else { showToast('Conta marcada como paga!'); carregarDadosIniciais(); }
+                });
+            }
+        }
+    });
+
+    // Eventos de clique nos cards e modais
+    document.getElementById('card-receitas').addEventListener('click', () => exibirDetalhesModal('Receita'));
+    document.getElementById('card-despesas').addEventListener('click', () => exibirDetalhesModal('Despesa'));
+    document.getElementById('card-saldo').addEventListener('click', () => exibirDetalhesModal('Saldo'));
+    document.getElementById('btn-abrir-modal-receita').addEventListener('click', () => abrirModalRegistro('Receita'));
+    document.getElementById('btn-abrir-modal-despesa').addEventListener('click', () => abrirModalRegistro('Despesa'));
+    
+    // Fechar modais ao clicar no botão ou fora do conteúdo
+    document.querySelectorAll('.modal-container').forEach(modal => {
+        modal.addEventListener('click', (e) => { if (e.target === modal) modal.style.display = 'none'; });
+    });
+    document.getElementById('btn-fechar-detalhes').addEventListener('click', () => document.getElementById('modal-detalhes').style.display = 'none');
+    document.getElementById('btn-fechar-registro').addEventListener('click', () => document.getElementById('modal-registro').style.display = 'none');
+    document.getElementById('btn-cancelar-registro').addEventListener('click', () => document.getElementById('modal-registro').style.display = 'none');
+    
+    // Eventos de Exportação
+    document.getElementById('btn-export-pdf-receitas').addEventListener('click', () => exportarParaPDF('Receita'));
+    document.getElementById('btn-export-csv-receitas').addEventListener('click', () => exportarParaCSV('Receita'));
+    document.getElementById('btn-export-pdf-despesas').addEventListener('click', () => exportarParaPDF('Despesa'));
+    document.getElementById('btn-export-csv-despesas').addEventListener('click', () => exportarParaCSV('Despesa'));
+    document.getElementById('btn-refresh').addEventListener('click', carregarDadosIniciais);
+
+    // --- NOVO: Lógica para o modal de Divisão de Renda ---
+    const modalDivisao = document.getElementById('modal-divisao-renda');
+    
+    document.getElementById('btn-abrir-modal-divisao').addEventListener('click', () => {
+        modalDivisao.style.display = 'flex';
+        document.getElementById('renda-total').value = ''; // Limpa o campo ao abrir
+        document.getElementById('resultado-divisao').innerHTML = ''; // Limpa resultados anteriores
+    });
+    
+    document.getElementById('btn-fechar-divisao').addEventListener('click', () => {
+        modalDivisao.style.display = 'none';
+    });
+
+    document.getElementById('renda-total').addEventListener('keyup', (e) => formatarInputMoeda(e.target));
+
+    document.getElementById('form-divisao-renda').addEventListener('submit', (e) => {
+        e.preventDefault();
+        const rendaInput = document.getElementById('renda-total');
+        const valorRenda = parseFloat(rendaInput.value.replace(/\./g, '').replace(',', '.'));
+
+        if (isNaN(valorRenda) || valorRenda <= 0) {
+            showToast('Por favor, insira um valor de renda válido.', 'error');
+            return;
+        }
+
+        const categoriasDivisao = [
+            { nome: 'DÍZIMO', percentual: 0.10 },
+            { nome: 'DESPESAS MENSAIS (CONTAS)', percentual: 0.50 },
+            { nome: 'INVESTIMENTO ACADÊMICO', percentual: 0.10 },
+            { nome: 'RESERVA/APOSENTADORIA', percentual: 0.10 },
+            { nome: 'SONHOS (CASA/VIAGEM)', percentual: 0.10 },
+            { nome: 'OFERTAS/CARIDADES', percentual: 0.05 },
+            { nome: 'DIVERSÃO/LAZER', percentual: 0.05 }
+        ];
+
+        let resultadoHTML = `<h4>Resultado da Divisão para ${formatarMoeda(valorRenda)}:</h4>
+                             <div class="tabela-contas-wrapper">
+                                <table class="tabela-contas">
+                                    <thead>
+                                        <tr>
+                                            <th>Categoria</th>
+                                            <th style="text-align: right;">%</th>
+                                            <th style="text-align: right;">Valor</th>
+                                        </tr>
+                                    </thead>
+                                    <tbody>`;
+        
+        categoriasDivisao.forEach(cat => {
+            const valorCalculado = valorRenda * cat.percentual;
+            resultadoHTML += `<tr>
+                                <td data-label="Categoria">${cat.nome}</td>
+                                <td data-label="%" style="text-align: right;">${(cat.percentual * 100).toFixed(0)}%</td>
+                                <td data-label="Valor" style="text-align: right; font-weight: 600;">${formatarMoeda(valorCalculado)}</td>
+                              </tr>`;
+        });
+
+        resultadoHTML += `</tbody></table></div>`;
+        document.getElementById('resultado-divisao').innerHTML = resultadoHTML;
+    });
+
+    // Inicialização
+    aplicarTema(localStorage.getItem('temaDashboard') || 'light');
+    carregarDadosIniciais();
+});
+</script>
+</body>
+</html>
